@@ -1,11 +1,12 @@
-const express = require('express');
+import express from 'express';
+import * as meetingController from '../controllers/meetingController.js';
+import authMiddleware from '../middleware/authMiddleware.js';
+
 const router = express.Router();
-const meetingController = require('../controllers/meetingController');
-const authMiddleware = require('../middleware/authMiddleware');
 
 router.use(authMiddleware);
 
-router.post('/', meetingController.logMeeting);
 router.get('/', meetingController.getMeetings);
+router.post('/', meetingController.createMeeting);
 
-module.exports = router;
+export default router;

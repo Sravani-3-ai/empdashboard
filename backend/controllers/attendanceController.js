@@ -1,71 +1,38 @@
-const Attendance = require('../models/attendanceModel');
-const { parseISO, differenceInMinutes, format } = require('date-fns');
+import Attendance from '../models/attendanceModel.js';
 
-exports.checkIn = async (req, res) => {
-  const { employee_id } = req.body;
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const now = new Date().toISOString();
+export const checkIn = async (req, res) => {
+    const { user_id } = req.body;
+    try {
+        const active = await Attendance.getActiveSession(user_id);
+        if (active) return res.status(400).json({ message: 'User already checked in' });
 
-  try {
-    const existing = await Attendance.getByEmployeeAndDate(employee_id, today);
-    if (existing) {
-      return res.status(400).json({ message: 'Already checked in today!' });
+        const now = new Date().toISOString();
+        const result = await Attendance.checkIn(user_id, now);
+        res.status(201).json({ id: result.lastInsertRowid, message: 'Check-in successful' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error during check-in', error: error.message });
     }
-
-    await Attendance.checkIn(employee_id, now, today);
-    res.json({ message: 'Session started!' });
-  } catch (err) {
-    res.status(500).json({ message: 'Database Error!', error: err.message });
-  }
 };
 
-exports.checkOut = async (req, res) => {
-  const { employee_id } = req.body;
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const now = new Date().toISOString();
+export const checkOut = async (req, res) => {
+    const { user_id } = req.body;
+    try {
+        const active = await Attendance.getActiveSession(user_id);
+        if (!active) return res.status(400).json({ message: 'No active session found' });
 
-  try {
-    const attendance = await Attendance.getActiveCheckIn(employee_id, today);
-
-    if (!attendance) {
-      return res.status(400).json({ message: 'No active session found!' });
+        const now = new Date().toISOString();
+        await Attendance.checkOut(active.id, now);
+        res.status(200).json({ message: 'Check-out successful' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error during check-out', error: error.message });
     }
-
-    const checkInTime = parseISO(attendance.check_in);
-    const checkOutTime = parseISO(now);
-    const diffMinutes = differenceInMinutes(checkOutTime, checkInTime);
-    const workHours = (diffMinutes / 60).toFixed(2);
-
-    await Attendance.checkOut(attendance.id, now, workHours);
-    res.json({ message: 'Session Ended Successfully!', workHours });
-  } catch (err) {
-    res.status(500).json({ message: 'Database Error!', error: err.message });
-  }
 };
 
-exports.concludeSession = async (req, res) => {
-  const { id } = req.params;
-  try {
-    await Attendance.concludeSession(id);
-    res.json({ message: 'Session concluded successfully!' });
-  } catch (err) {
-    res.status(500).json({ message: 'Database Error!', error: err.message });
-  }
-};
-
-exports.getAttendance = async (req, res) => {
-  const { role, id } = req.query; // Passed from frontend based on logged in user
-  try {
-    let attendance;
-    if (role === 'Admin') {
-      attendance = await Attendance.getAll();
-    } else if (role === 'Manager') {
-      attendance = await Attendance.getByManager(id);
-    } else {
-      attendance = await Attendance.getByEmployee(id);
+export const getAllAttendance = async (req, res) => {
+    try {
+        const result = await Attendance.getAll();
+        res.status(200).json(result);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching attendance', error: error.message });
     }
-    res.json(attendance);
-  } catch (err) {
-    res.status(500).json({ message: 'Database Error!', error: err.message });
-  }
 };

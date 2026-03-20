@@ -9,11 +9,15 @@ const MeetingsLog = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   const fetchMeetings = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
     try {
+      console.log('[MeetingsLog] Fetching engagement records...');
       const { data } = await api.get(`/meetings?role=${user.role}&id=${user.id}`);
       setMeetings(data);
     } catch (err) {
-      console.error(err);
+      console.error('[MeetingsLog] Fetch Error:', err);
     }
   };
 
@@ -24,12 +28,14 @@ const MeetingsLog = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/meetings', { ...formData, employee_id: user.id });
+      console.log(`[MeetingsLog] Logging new session: ${formData.title}`);
+      await api.post('/meetings', { ...formData, user_id: user.id });
       setShowModal(false);
       setFormData({ title: '', meeting_date: '', duration: '', notes: '' });
       fetchMeetings();
     } catch (err) {
-      alert('Error logging meeting');
+      console.error('[MeetingsLog] Log Error:', err);
+      alert('Error logging meeting: ' + (err.response?.data?.message || err.message));
     }
   };
 
@@ -40,33 +46,33 @@ const MeetingsLog = () => {
           <h4 className="fw-bold mb-1">Productivity & Meeting Logs</h4>
           <p className="text-secondary small mb-0">Track internal and external engagement sessions.</p>
         </div>
-        <button className="btn btn-primary d-flex align-items-center gap-2 shadow" onClick={() => setShowModal(true)}>
+        <button className="btn btn-primary d-flex align-items-center gap-2 shadow fw-bold" onClick={() => setShowModal(true)}>
           <Plus size={18} /> New Entry
         </button>
       </div>
 
-      <div className="stat-card p-0 overflow-hidden">
+      <div className="table-custom shadow-sm border-0">
         <table className="table table-hover mb-0">
-          <thead className="bg-light">
+          <thead>
             <tr>
-              {user.role !== 'Staff' && <th>Employee</th>}
+              {user.role !== 'employee' && <th>User Identity</th>}
               <th>Topic / Title</th>
               <th>Date</th>
               <th>Duration</th>
-              <th>Status</th>
+              <th>Protocol Status</th>
             </tr>
           </thead>
           <tbody>
             {meetings.length === 0 ? (
-              <tr><td colSpan="5" className="text-center p-4">No sessions logged yet.</td></tr>
+              <tr><td colSpan="5" className="text-center p-5 text-secondary">No engagement sessions logged in history.</td></tr>
             ) : (
               meetings.map(m => (
-                <tr key={m.id}>
-                  {user.role !== 'Staff' && <td>{m.employee_name}</td>}
-                  <td className="fw-bold">{m.title}</td>
+                <tr key={m.id} className="align-middle">
+                  {user.role !== 'employee' && <td>{m.user_name}</td>}
+                  <td className="fw-bold text-dark">{m.title}</td>
                   <td>{m.meeting_date}</td>
                   <td>{m.duration} mins</td>
-                  <td><span className="badge bg-success">Concluded</span></td>
+                  <td><span className="badge bg-success-light text-success border-success">CONCLUDED</span></td>
                 </tr>
               ))
             )}
@@ -87,7 +93,7 @@ const MeetingsLog = () => {
                   <div className="row g-3">
                     <div className="col-12">
                       <label className="form-label small fw-bold text-secondary">Meeting Title</label>
-                      <input type="text" className="form-control" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} required />
+                      <input type="text" className="form-control" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} required placeholder="e.g. Sprint Planning" />
                     </div>
                     <div className="col-md-6">
                       <label className="form-label small fw-bold text-secondary">Session Date</label>
@@ -99,13 +105,13 @@ const MeetingsLog = () => {
                     </div>
                     <div className="col-12">
                       <label className="form-label small fw-bold text-secondary">Session Notes</label>
-                      <textarea className="form-control" rows="3" value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})}></textarea>
+                      <textarea className="form-control" rows="3" value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} placeholder="Session highlights..."></textarea>
                     </div>
                   </div>
                 </div>
                 <div className="modal-footer border-0 pt-0">
-                  <button type="button" className="btn btn-light" onClick={() => setShowModal(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-primary px-4 fw-bold">Save Session</button>
+                  <button type="button" className="btn btn-light" onClick={() => setShowModal(false)}>Abort</button>
+                  <button type="submit" className="btn btn-primary px-4 fw-bold shadow">Synchronize</button>
                 </div>
               </form>
             </div>

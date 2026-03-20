@@ -1,12 +1,13 @@
-const express = require('express');
+import express from 'express';
+import * as leaveController from '../controllers/leaveController.js';
+import authMiddleware from '../middleware/authMiddleware.js';
+
 const router = express.Router();
-const leaveController = require('../controllers/leaveController');
-const authMiddleware = require('../middleware/authMiddleware');
 
 router.use(authMiddleware);
 
-router.post('/', leaveController.applyLeave);
 router.get('/', leaveController.getLeaves);
-router.put('/:id', leaveController.updateLeaveStatus);
+router.post('/apply', leaveController.applyLeave);
+router.put('/:id/status', leaveController.updateStatus);
 
-module.exports = router;
+export default router;

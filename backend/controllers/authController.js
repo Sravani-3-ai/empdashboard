@@ -1,52 +1,99 @@
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
-const db = require('../db');
-const dotenv = require('dotenv');
+import { db } from '../db.js';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
 
 dotenv.config();
 
-exports.login = async (req, res) => {
-  const { username, password } = req.body;
+const JWT_SECRET = process.env.JWT_SECRET || 'fallbacksecret';
 
-  if (!username || !password) {
-    return res.status(400).json({ message: 'Username and Password are required!' });
-  }
+// Helper to find a user by email
+const findUserByEmail = async (email) => {
+    try {
+        const result = await db.execute({
+            sql: 'SELECT * FROM users WHERE email = ?',
+            args: [email]
+        });
+        return result.rows[0];
+    } catch (error) {
+        console.error('Error finding user by email:', error);
+        throw error;
+    }
+};
 
-  try {
-    // Check in the employees table for everyone
-    const user = await db.getAsync('SELECT * FROM employees WHERE username = ?', [username]);
+// Register
+export const register = async (req, res) => {
+    const { name, email, password, role } = req.body;
 
-    if (!user) {
-      return res.status(401).json({ message: 'Invalid Credentials!' });
+    if (!name || !email || !password || !role) {
+        return res.status(400).json({ message: 'All fields (name, email, password, role) are required!' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-
-    if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid Credentials!' });
+    if (!['admin', 'manager', 'employee'].includes(role)) {
+        return res.status(400).json({ message: 'Invalid role! Must be admin, manager, or employee.' });
     }
 
-    // Role is stored in employee_level
-    const token = jwt.sign(
-      { 
-        id: user.id, 
-        username: user.username, 
-        role: user.employee_level 
-      }, 
-      process.env.JWT_SECRET, 
-      { expiresIn: '24h' }
-    );
+    try {
+        const existingUser = await findUserByEmail(email);
+        if (existingUser) {
+            return res.status(409).json({ message: 'Email already registered!' });
+        }
 
-    res.json({ 
-      token, 
-      user: { 
-        id: user.id, 
-        username: user.username, 
-        name: user.name,
-        role: user.employee_level 
-      } 
-    });
-  } catch (err) {
-    res.status(500).json({ message: 'Backend Error!', error: err.message });
-  }
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        const result = await db.execute({
+            sql: 'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
+            args: [name, email, hashedPassword, role]
+        });
+
+        res.status(201).json({
+            message: 'User registered successfully!',
+            userId: Number(result.lastInsertRowid)
+        });
+    } catch (error) {
+        console.error('Registration error:', error);
+        res.status(500).json({ message: 'Error during registration', error: error.message });
+    }
+};
+
+// Login
+export const login = async (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({ message: 'Email and password are required!' });
+    }
+
+    try {
+        const user = await findUserByEmail(email);
+        if (!user) {
+            return res.status(401).json({ message: 'Invalid credentials!' });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(401).json({ message: 'Invalid credentials!' });
+        }
+
+        const token = jwt.sign(
+            { id: user.id, email: user.email, role: user.role },
+            JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+
+        res.status(200).json({
+            message: 'Login successful!',
+            token,
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role
+            }
+        });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ message: 'Error during login', error: error.message });
+    }
 };

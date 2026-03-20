@@ -22,8 +22,8 @@ const Sidebar = ({ userRole }) => {
 
   // Define menu items per role
   const menuItems = {
-    Admin: [
-      { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={20} /> },
+    admin: [
+      { name: 'Dashboard', path: '/admin', icon: <LayoutDashboard size={20} /> },
       { name: 'User Management', path: '/employees', icon: <Users size={20} /> },
       { name: 'System Attendance', path: '/attendance', icon: <Clock size={20} /> },
       { name: 'Leave Queue', path: '/leaves', icon: <CalendarDays size={20} /> },
@@ -31,15 +31,15 @@ const Sidebar = ({ userRole }) => {
       { name: 'Performance/Bonus', path: '/bonuses', icon: <Heart size={20} /> },
       { name: 'Meeting Logs', path: '/meetings', icon: <Video size={20} /> },
     ],
-    Manager: [
-      { name: 'Team Overview', path: '/dashboard', icon: <LayoutDashboard size={20} /> },
+    manager: [
+      { name: 'Team Overview', path: '/manager', icon: <LayoutDashboard size={20} /> },
       { name: 'Team Directory', path: '/employees', icon: <Users size={20} /> },
       { name: 'Team Attendance', path: '/attendance', icon: <Clock size={20} /> },
       { name: 'Leave Approvals', path: '/leaves', icon: <CalendarDays size={20} /> },
       { name: 'Productivity Logs', path: '/meetings', icon: <Video size={20} /> },
     ],
-    Staff: [
-      { name: 'Personal Dash', path: '/dashboard', icon: <LayoutDashboard size={20} /> },
+    employee: [
+      { name: 'Personal Dash', path: '/employee', icon: <LayoutDashboard size={20} /> },
       { name: 'Session Tracker', path: '/attendance', icon: <Clock size={20} /> },
       { name: 'Leave Application', path: '/leaves', icon: <CalendarDays size={20} /> },
       { name: 'Break Tracker', path: '/breaks', icon: <Coffee size={20} /> },

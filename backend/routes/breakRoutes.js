@@ -1,12 +1,13 @@
-const express = require('express');
+import express from 'express';
+import * as breakController from '../controllers/breakController.js';
+import authMiddleware from '../middleware/authMiddleware.js';
+
 const router = express.Router();
-const breakController = require('../controllers/breakController');
-const authMiddleware = require('../middleware/authMiddleware');
 
 router.use(authMiddleware);
 
+router.get('/', breakController.getBreaks);
 router.post('/start', breakController.startBreak);
 router.post('/end', breakController.endBreak);
-router.get('/', breakController.getBreaks);
 
-module.exports = router;
+export default router;

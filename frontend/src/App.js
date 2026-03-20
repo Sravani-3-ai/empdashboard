@@ -11,6 +11,9 @@ import BonusManagement from './pages/BonusManagement';
 import MeetingsLog from './pages/MeetingsLog';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
+import AdminDashboard from './pages/AdminDashboard';
+import ManagerDashboard from './pages/ManagerDashboard';
+import EmployeeDashboard from './pages/EmployeeDashboard';
 
 // Protected Route Component with Role Check
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -20,7 +23,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   if (!token) return <Navigate to="/login" />;
   
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/dashboard" />;
+    return <Navigate to="/" />;
   }
 
   return (
@@ -36,18 +39,34 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   );
 };
 
+const RoleBasedRedirect = () => {
+  const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  
+  if (!token) return <Navigate to="/login" />;
+  
+  if (user.role === 'admin') return <Navigate to="/admin" />;
+  if (user.role === 'manager') return <Navigate to="/manager" />;
+  return <Navigate to="/employee" />;
+};
+
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
         
-        {/* Shared Dashboard (view differs by role) */}
+        {/* Role-Specific Dashboards */}
+        <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/manager" element={<ProtectedRoute allowedRoles={['manager']}><ManagerDashboard /></ProtectedRoute>} />
+        <Route path="/employee" element={<ProtectedRoute allowedRoles={['employee']}><EmployeeDashboard /></ProtectedRoute>} />
+        
+        {/* General Dashboard Catch-all or Home */}
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         
         {/* Admin and Manager features */}
         <Route path="/employees" element={
-          <ProtectedRoute allowedRoles={['Admin', 'Manager']}>
+          <ProtectedRoute allowedRoles={['admin', 'manager']}>
             <Employees />
           </ProtectedRoute>
         } />
@@ -66,7 +85,7 @@ function App() {
         
         {/* Bonus (Admin/Manager only view, or personal view) */}
         <Route path="/bonuses" element={
-          <ProtectedRoute allowedRoles={['Admin', 'Manager']}>
+          <ProtectedRoute allowedRoles={['admin', 'manager']}>
             <BonusManagement />
           </ProtectedRoute>
         } />
@@ -74,7 +93,7 @@ function App() {
         {/* Meeting Logs */}
         <Route path="/meetings" element={<ProtectedRoute><MeetingsLog /></ProtectedRoute>} />
         
-        <Route path="/" element={<Navigate to="/dashboard" />} />
+        <Route path="/" element={<RoleBasedRedirect />} />
       </Routes>
     </Router>
   );

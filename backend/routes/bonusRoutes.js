@@ -1,12 +1,12 @@
-const express = require('express');
+import express from 'express';
+import * as bonusController from '../controllers/bonusController.js';
+import authMiddleware from '../middleware/authMiddleware.js';
+
 const router = express.Router();
-const bonusController = require('../controllers/bonusController');
-const authMiddleware = require('../middleware/authMiddleware');
 
 router.use(authMiddleware);
 
-router.post('/', bonusController.assignBonus);
 router.get('/', bonusController.getBonuses);
-router.put('/:id', bonusController.editBonus);
+router.post('/', bonusController.assignBonus);
 
-module.exports = router;
+export default router;

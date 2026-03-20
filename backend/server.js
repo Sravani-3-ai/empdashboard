@@ -1,9 +1,14 @@
-const express = require('express');
-const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
-const db = require('./db');
-const dotenv = require('dotenv');
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import authRoutes from './routes/authRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import attendanceRoutes from './routes/attendanceRoutes.js';
+import dashboardRoutes from './routes/dashboardRoutes.js';
+import breakRoutes from './routes/breakRoutes.js';
+import leaveRoutes from './routes/leaveRoutes.js';
+import bonusRoutes from './routes/bonusRoutes.js';
+import meetingRoutes from './routes/meetingRoutes.js';
 
 dotenv.config();
 
@@ -14,42 +19,23 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// Initialize Database Schema
-const schemaPath = path.join(__dirname, 'database', 'schema.sql');
-const schema = fs.readFileSync(schemaPath, 'utf8');
-
-db.serialize(() => {
-  db.exec(schema, (err) => {
-    if (err) {
-      console.error('Error initializing schema:', err.message);
-    } else {
-      console.log('Database schema initialized.');
-    }
-  });
-});
-
-// Import Routes
-const authRoutes = require('./routes/authRoutes');
-const employeeRoutes = require('./routes/employeeRoutes');
-const attendanceRoutes = require('./routes/attendanceRoutes');
-const breakRoutes = require('./routes/breakRoutes');
-const leaveRoutes = require('./routes/leaveRoutes');
-const bonusRoutes = require('./routes/bonusRoutes');
-const dashboardRoutes = require('./routes/dashboardRoutes');
-const meetingRoutes = require('./routes/meetingRoutes');
-
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/employees', employeeRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/attendance', attendanceRoutes);
-app.use('/api/break', breakRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/breaks', breakRoutes);
 app.use('/api/leaves', leaveRoutes);
 app.use('/api/bonuses', bonusRoutes);
-app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/meetings', meetingRoutes);
 
 app.get('/', (req, res) => {
-  res.send('Employee Dashboard API is running...');
+  res.send('Senior Employee Dashboard API is running...');
+});
+
+// Error handling for unmatched routes
+app.use('*', (req, res) => {
+  res.status(404).json({ message: 'Route not found' });
 });
 
 app.listen(PORT, () => {

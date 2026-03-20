@@ -1,30 +1,45 @@
-const db = require('../db');
+import { db } from '../db.js';
 
 const Break = {
-  getAll: () => db.allAsync(`
-    SELECT b.*, e.name as employee_name 
-    FROM breaks b 
-    JOIN employees e ON b.employee_id = e.id 
-    ORDER BY b.date DESC, b.break_start DESC
-  `),
+  getAll: async () => {
+    const result = await db.execute(`
+      SELECT b.*, u.name as user_name 
+      FROM breaks b 
+      JOIN users u ON b.user_id = u.id 
+      ORDER BY b.break_start DESC
+    `);
+    return result.rows;
+  },
   
-  getByEmployee: (employee_id) => db.allAsync(`
-    SELECT * FROM breaks WHERE employee_id = ? ORDER BY date DESC, break_start DESC
-  `, [employee_id]),
+  getByUser: async (user_id) => {
+    const result = await db.execute({
+      sql: 'SELECT * FROM breaks WHERE user_id = ? ORDER BY break_start DESC',
+      args: [user_id]
+    });
+    return result.rows;
+  },
 
-  getByManager: (managerId) => db.allAsync(`
-    SELECT b.*, e.name as employee_name 
-    FROM breaks b 
-    JOIN employees e ON b.employee_id = e.id 
-    WHERE e.manager_id = ?
-    ORDER BY b.date DESC, b.break_start DESC
-  `, [managerId]),
+  start: async (user_id, now) => {
+    return await db.execute({
+      sql: 'INSERT INTO breaks (user_id, break_start) VALUES (?, ?)',
+      args: [user_id, now]
+    });
+  },
+  
+  end: async (id, now) => {
+    return await db.execute({
+      sql: 'UPDATE breaks SET break_end = ? WHERE id = ?',
+      args: [now, id]
+    });
+  },
 
-  getActiveBreak: (employee_id, date) => db.getAsync('SELECT * FROM breaks WHERE employee_id = ? AND date = ? AND break_end IS NULL', [employee_id, date]),
-  
-  start: (employee_id, now, today) => db.runAsync('INSERT INTO breaks (employee_id, break_start, date) VALUES (?, ?, ?)', [employee_id, now, today]),
-  
-  end: (id, now, duration) => db.runAsync('UPDATE breaks SET break_end = ?, break_duration = ? WHERE id = ?', [now, duration, id]),
+  getActiveBreak: async (user_id) => {
+    const result = await db.execute({
+      sql: 'SELECT * FROM breaks WHERE user_id = ? AND break_end IS NULL',
+      args: [user_id]
+    });
+    return result.rows[0];
+  }
 };
 
-module.exports = Break;
+export default Break;

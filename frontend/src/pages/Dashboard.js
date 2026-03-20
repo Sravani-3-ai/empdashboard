@@ -18,6 +18,12 @@ const Dashboard = () => {
 
   useEffect(() => {
     const fetchStats = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.warn('[Dashboard] No token found, skipping stats fetch.');
+        return;
+      }
+
       try {
         const { data } = await api.get(`/dashboard/stats?role=${user.role}&id=${user.id}`);
         setStats(data);
@@ -26,31 +32,30 @@ const Dashboard = () => {
       }
     };
     fetchStats();
-  }, []);
+  }, [user.role, user.id]);
 
   if (!stats) return <div className="p-5 text-center">Initialising Dashboard Analytics...</div>;
 
   const adminCards = [
-    { title: 'Total Workforce', value: stats.summary.totalEmployees, icon: <Users size={24} />, color: '#6366f1', bg: '#eef2ff' },
-    { title: 'Active Managers', value: stats.summary.managerCount, icon: <UserPlus size={24} />, color: '#0ea5e9', bg: '#f0f9ff' },
-    { title: 'Today Presence', value: stats.summary.presentToday, icon: <CheckCircle size={24} />, color: '#10b981', bg: '#ecfdf5' },
-    { title: 'On Leave', value: stats.summary.onLeaveToday, icon: <Calendar size={24} />, color: '#f59e0b', bg: '#fffbeb' },
+    { title: 'Total Workforce', value: stats.summary.totalEmployees || 0, icon: <Users size={24} />, color: '#6366f1', bg: '#eef2ff' },
+    { title: 'Active Managers', value: stats.summary.managerCount || 0, icon: <UserPlus size={24} />, color: '#0ea5e9', bg: '#f0f9ff' },
+    { title: 'Today Presence', value: stats.summary.presentToday || 0, icon: <CheckCircle size={24} />, color: '#10b981', bg: '#ecfdf5' },
+    { title: 'On Leave', value: stats.summary.onLeaveToday || 0, icon: <Calendar size={24} />, color: '#f59e0b', bg: '#fffbeb' },
   ];
 
   const staffCards = [
-    { title: 'Units Logged', value: '420m', icon: <Clock size={24} />, color: '#6366f1', bg: '#eef2ff' },
-    { title: 'Active Target', value: '92%', icon: <Activity size={24} />, color: '#10b981', bg: '#ecfdf5' },
-    { title: 'Total Rewards', value: `$${stats.summary.totalBonuses.toLocaleString()}`, icon: <TrendingUp size={24} />, color: '#10b981', bg: '#ecfdf5' },
-    { title: 'Absence Count', value: stats.summary.onLeaveToday, icon: <Calendar size={24} />, color: '#f59e0b', bg: '#fffbeb' },
+    { title: 'Login Status', value: stats.summary.presentToday ? 'Active' : 'Missing', icon: <Clock size={24} />, color: '#6366f1', bg: '#eef2ff' },
+    { title: 'Total Rewards', value: `$${(stats.summary.totalBonuses || 0).toLocaleString()}`, icon: <TrendingUp size={24} />, color: '#10b981', bg: '#ecfdf5' },
+    { title: 'Absence Count', value: stats.summary.onLeaveToday || 0, icon: <Calendar size={24} />, color: '#f59e0b', bg: '#fffbeb' },
   ];
 
-  const displayCards = user.role === 'Staff' ? staffCards : adminCards;
+  const displayCards = user.role === 'employee' ? staffCards : adminCards;
 
   return (
     <div className="px-2">
       <div className="mb-4">
         <h4 className="fw-bold mb-1">
-          {user.role === 'Staff' ? 'Individual Productivity Terminal' : 'Global Workspace Intelligence'}
+          {user.role === 'employee' ? 'Individual Productivity Terminal' : 'Global Workspace Intelligence'}
         </h4>
         <p className="text-secondary small">Welcome, {user.name}. View your {user.role.toLowerCase()} operational status.</p>
       </div>

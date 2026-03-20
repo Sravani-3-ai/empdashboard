@@ -27,7 +27,7 @@ ChartJS.register(
 
 const Charts = ({ attendanceData = [] }) => {
   // Ensure the chart data is in Chronological order (Past -> Present)
-  const sortedData = [...attendanceData].reverse();
+  const sortedData = [...attendanceData];
 
   const lineData = {
     labels: sortedData.map(d => d.date),

@@ -1,13 +1,10 @@
-const express = require('express');
+import express from 'express';
+import * as attendanceController from '../controllers/attendanceController.js';
+
 const router = express.Router();
-const attendanceController = require('../controllers/attendanceController');
-const authMiddleware = require('../middleware/authMiddleware');
 
-router.use(authMiddleware);
+router.get('/', attendanceController.getAllAttendance);
+router.post('/check-in', attendanceController.checkIn);
+router.post('/check-out', attendanceController.checkOut);
 
-router.post('/checkin', attendanceController.checkIn);
-router.post('/checkout', attendanceController.checkOut);
-router.put('/conclude/:id', attendanceController.concludeSession);
-router.get('/', attendanceController.getAttendance);
-
-module.exports = router;
+export default router;

@@ -1,27 +1,20 @@
-const Meeting = require('../models/meetingModel');
+import Meeting from '../models/meetingModel.js';
 
-exports.logMeeting = async (req, res) => {
-  try {
-    await Meeting.create(req.body);
-    res.json({ message: 'Meeting logged successfully!' });
-  } catch (err) {
-    res.status(500).json({ message: 'Database Error!', error: err.message });
-  }
+export const createMeeting = async (req, res) => {
+    try {
+        await Meeting.create(req.body);
+        res.status(201).json({ message: 'Meeting scheduled successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error scheduling meeting', error: error.message });
+    }
 };
 
-exports.getMeetings = async (req, res) => {
-  const { role, id } = req.query;
-  try {
-    let meetings;
-    if (role === 'Admin') {
-      meetings = await Meeting.getAll();
-    } else if (role === 'Manager') {
-      meetings = await Meeting.getByManager(id);
-    } else {
-      meetings = await Meeting.getByEmployee(id);
+export const getMeetings = async (req, res) => {
+    const { user_id } = req.query;
+    try {
+        const result = user_id ? await Meeting.getByUser(user_id) : await Meeting.getAll();
+        res.status(200).json(result);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching meetings', error: error.message });
     }
-    res.json(meetings);
-  } catch (err) {
-    res.status(500).json({ message: 'Database Error!', error: err.message });
-  }
 };

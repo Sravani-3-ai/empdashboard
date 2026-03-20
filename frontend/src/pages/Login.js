@@ -5,7 +5,7 @@ import '../styles/login.css';
 import { ShieldAlert } from 'lucide-react';
 
 const Login = () => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,13 +16,16 @@ const Login = () => {
     setLoading(true);
     setError('');
     try {
-      const { data } = await api.post('/auth/login', { username, password });
+      const { data } = await api.post('/auth/login', { email, password });
       
       // Store core auth data
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       
-      navigate('/dashboard');
+      const role = data.user.role;
+      if (role === 'admin') navigate('/admin');
+      else if (role === 'manager') navigate('/manager');
+      else navigate('/employee');
     } catch (err) {
       setError(err.response?.data?.message || 'Security Breach: Invalid Credentials');
     } finally {
@@ -46,13 +49,13 @@ const Login = () => {
         )}
 
         <form onSubmit={handleLogin}>
-          <div className="text-start mb-1 ms-1 small fw-bold text-secondary text-uppercase" style={{ fontSize: '0.65rem' }}>Identity ID</div>
+          <div className="text-start mb-1 ms-1 small fw-bold text-secondary text-uppercase" style={{ fontSize: '0.65rem' }}>System Identifier (Email)</div>
           <input
-            type="text"
+            type="email"
             className="form-control form-control-custom"
-            placeholder="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            placeholder="email@company.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             required
           />
           <div className="text-start mb-1 mt-3 ms-1 small fw-bold text-secondary text-uppercase" style={{ fontSize: '0.65rem' }}>Access Key</div>

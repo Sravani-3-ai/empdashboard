@@ -1,55 +1,39 @@
-const Break = require('../models/breakModel');
-const { format, parseISO, differenceInMinutes } = require('date-fns');
+import Break from '../models/breakModel.js';
 
-exports.startBreak = async (req, res) => {
-  const { employee_id } = req.body;
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const now = new Date().toISOString();
+export const startBreak = async (req, res) => {
+    const { user_id } = req.body;
+    try {
+        const active = await Break.getActiveBreak(user_id);
+        if (active) return res.status(400).json({ message: 'User already on break' });
 
-  try {
-    await Break.start(employee_id, now, today);
-    res.json({ message: 'Break started!' });
-  } catch (err) {
-    res.status(500).json({ message: 'Database Error!', error: err.message });
-  }
+        const now = new Date().toISOString();
+        await Break.start(user_id, now);
+        res.status(201).json({ message: 'Break started' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error starting break', error: error.message });
+    }
 };
 
-exports.endBreak = async (req, res) => {
-  const { employee_id } = req.body;
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const now = new Date().toISOString();
+export const endBreak = async (req, res) => {
+    const { user_id } = req.body;
+    try {
+        const active = await Break.getActiveBreak(user_id);
+        if (!active) return res.status(400).json({ message: 'No active break found' });
 
-  try {
-    const breakSession = await Break.getActiveBreak(employee_id, today);
-
-    if (!breakSession) {
-      return res.status(400).json({ message: 'No active break found for today!' });
+        const now = new Date().toISOString();
+        await Break.end(active.id, now);
+        res.status(200).json({ message: 'Break ended' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error ending break', error: error.message });
     }
-
-    const start = parseISO(breakSession.break_start);
-    const end = parseISO(now);
-    const diff = differenceInMinutes(end, start);
-
-    await Break.end(breakSession.id, now, diff);
-    res.json({ message: 'Break ended!', durationMinutes: diff });
-  } catch (err) {
-    res.status(500).json({ message: 'Database Error!', error: err.message });
-  }
 };
 
-exports.getBreaks = async (req, res) => {
-  const { role, id } = req.query;
-  try {
-    let breaks;
-    if (role === 'Admin') {
-      breaks = await Break.getAll();
-    } else if (role === 'Manager') {
-      breaks = await Break.getByManager(id);
-    } else {
-      breaks = await Break.getByEmployee(id);
+export const getBreaks = async (req, res) => {
+    const { user_id } = req.query;
+    try {
+        const result = user_id ? await Break.getByUser(user_id) : await Break.getAll();
+        res.status(200).json(result);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching breaks', error: error.message });
     }
-    res.json(breaks);
-  } catch (err) {
-    res.status(500).json({ message: 'Database Error!', error: err.message });
-  }
 };

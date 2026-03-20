@@ -1,38 +1,31 @@
-const Leave = require('../models/leaveModel');
+import Leave from '../models/leaveModel.js';
 
-exports.applyLeave = async (req, res) => {
-  try {
-    await Leave.apply(req.body);
-    res.json({ message: 'Leave request submitted!' });
-  } catch (err) {
-    res.status(500).json({ message: 'Database Error!', error: err.message });
-  }
-};
-
-exports.getLeaves = async (req, res) => {
-  const { role, id } = req.query;
-  try {
-    let leaves;
-    if (role === 'Admin') {
-      leaves = await Leave.getAll();
-    } else if (role === 'Manager') {
-      leaves = await Leave.getByManager(id);
-    } else {
-      leaves = await Leave.getByEmployee(id);
+export const applyLeave = async (req, res) => {
+    try {
+        await Leave.apply(req.body);
+        res.status(201).json({ message: 'Leave application submitted' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error applying for leave', error: error.message });
     }
-    res.json(leaves);
-  } catch (err) {
-    res.status(500).json({ message: 'Database Error!', error: err.message });
-  }
 };
 
-exports.updateLeaveStatus = async (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body;
-  try {
-    await Leave.updateStatus(id, status);
-    res.json({ message: `Leave ${status} successfully!` });
-  } catch (err) {
-    res.status(500).json({ message: 'Database Error!', error: err.message });
-  }
+export const getLeaves = async (req, res) => {
+    const { user_id } = req.query;
+    try {
+        const result = user_id ? await Leave.getByUser(user_id) : await Leave.getAll();
+        res.status(200).json(result);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching leaves', error: error.message });
+    }
+};
+
+export const updateStatus = async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+    try {
+        await Leave.updateStatus(id, status);
+        res.status(200).json({ message: 'Leave status updated' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating leave status', error: error.message });
+    }
 };

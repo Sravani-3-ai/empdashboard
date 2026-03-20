@@ -1,43 +1,37 @@
-const db = require('../db');
+import { db } from '../db.js';
 
 const Leave = {
-  getAll: () => db.allAsync(`
-    SELECT l.*, e.name as employee_name 
-    FROM leaves l 
-    JOIN employees e ON l.employee_id = e.id 
-    ORDER BY l.start_date DESC
-  `),
+  getAll: async () => {
+    const result = await db.execute(`
+      SELECT l.*, u.name as user_name 
+      FROM leaves l 
+      JOIN users u ON l.user_id = u.id 
+      ORDER BY l.from_date DESC
+    `);
+    return result.rows;
+  },
   
-  getByEmployee: (employee_id) => db.allAsync(`
-    SELECT l.*, e.name as employee_name 
-    FROM leaves l 
-    JOIN employees e ON l.employee_id = e.id 
-    WHERE l.employee_id = ?
-    ORDER BY l.start_date DESC
-  `, [employee_id]),
+  getByUser: async (user_id) => {
+    const result = await db.execute({
+      sql: 'SELECT * FROM leaves WHERE user_id = ? ORDER BY from_date DESC',
+      args: [user_id]
+    });
+    return result.rows;
+  },
 
-  getByManager: (managerId) => db.allAsync(`
-    SELECT l.*, e.name as employee_name 
-    FROM leaves l 
-    JOIN employees e ON l.employee_id = e.id 
-    WHERE e.manager_id = ?
-    ORDER BY l.start_date DESC
-  `, [managerId]),
-
-  apply: (data) => db.runAsync(
-    'INSERT INTO leaves (employee_id, leave_type, start_date, end_date, reason) VALUES (?, ?, ?, ?, ?)',
-    [data.employee_id, data.leave_type, data.start_date, data.end_date, data.reason]
-  ),
+  apply: async (data) => {
+    return await db.execute({
+      sql: 'INSERT INTO leaves (user_id, from_date, to_date, status) VALUES (?, ?, ?, "pending")',
+      args: [data.user_id, data.from_date, data.to_date]
+    });
+  },
   
-  updateStatus: (id, status) => db.runAsync('UPDATE leaves SET status = ? WHERE id = ?', [status, id]),
-  
-  getOnLeaveToday: (today) => db.getAsync('SELECT COUNT(*) as count FROM leaves WHERE ? BETWEEN start_date AND end_date AND status = "Approved"', [today]),
-  
-  getTypeStats: () => db.allAsync(`
-    SELECT leave_type, COUNT(*) as count 
-    FROM leaves 
-    GROUP BY leave_type
-  `),
+  updateStatus: async (id, status) => {
+    return await db.execute({
+      sql: 'UPDATE leaves SET status = ? WHERE id = ?',
+      args: [status, id]
+    });
+  }
 };
 
-module.exports = Leave;
+export default Leave;

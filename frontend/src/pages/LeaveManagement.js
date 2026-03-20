@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/api';
-import LeaveTable from '../components/LeaveTable';
 import { Plane, Calendar, UserCheck, AlertCircle } from 'lucide-react';
 
 const LeaveManagement = () => {
@@ -10,11 +9,15 @@ const LeaveManagement = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   const fetchLeaves = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
     try {
+      console.log('[LeaveManagement] Fetching leave records...');
       const { data } = await api.get(`/leaves?role=${user.role}&id=${user.id}`);
       setLeaves(data);
     } catch (err) {
-      console.error(err);
+      console.error('[LeaveManagement] Fetch Error:', err);
     }
   };
 
@@ -25,19 +28,23 @@ const LeaveManagement = () => {
   const handleApply = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/leaves', { ...formData, employee_id: user.id });
+      console.log('[LeaveManagement] Submitting new absence request...');
+      await api.post('/leaves', { ...formData, user_id: user.id });
       setShowApply(false);
       fetchLeaves();
     } catch (err) {
-      alert('Error applying for leave');
+      console.error('[LeaveManagement] Apply Error:', err);
+      alert('Error applying for leave: ' + (err.response?.data?.message || err.message));
     }
   };
 
   const updateStatus = async (id, status) => {
     try {
+      console.log(`[LeaveManagement] Updating status to ${status} for record ID: ${id}`);
       await api.put(`/leaves/${id}`, { status });
       fetchLeaves();
     } catch (err) {
+      console.error('[LeaveManagement] Status Update Error:', err);
       alert('Error updating leave status');
     }
   };
@@ -47,48 +54,48 @@ const LeaveManagement = () => {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h4 className="fw-bold mb-1">
-            {user.role === 'Staff' ? 'Leave Application Portal' : 'Absence Management Terminal'}
+            {user.role === 'employee' ? 'Leave Application Portal' : 'Absence Management Terminal'}
           </h4>
           <p className="text-secondary small mb-0">
-            {user.role === 'Staff' ? 'Submit and track your absence requests.' : 'Review and adjudicate team leave protocols.'}
+            {user.role === 'employee' ? 'Submit and track your absence requests.' : 'Review and adjudicate team leave protocols.'}
           </p>
         </div>
-        {user.role === 'Staff' && (
+        {user.role === 'employee' && (
           <button className="btn btn-primary d-flex align-items-center gap-2 shadow" onClick={() => setShowApply(true)}>
             <Plane size={18} /> Apply for Absence
           </button>
         )}
       </div>
 
-      <div className="stat-card p-0 overflow-hidden">
+      <div className="table-custom shadow-sm border-0">
         <table className="table table-hover mb-0">
-          <thead className="bg-light">
+          <thead>
             <tr>
-              {user.role !== 'Staff' && <th>Employee</th>}
+              {user.role !== 'employee' && <th>Employee Identity</th>}
               <th>Protocol Type</th>
               <th>Timeframe</th>
               <th>Status</th>
-              {user.role !== 'Staff' && <th>Action</th>}
+              {user.role !== 'employee' && <th>Action</th>}
             </tr>
           </thead>
           <tbody>
             {leaves.length === 0 ? (
-              <tr><td colSpan="5" className="text-center p-4 text-secondary">No active leave protocols found.</td></tr>
+              <tr><td colSpan="5" className="text-center p-5 text-secondary">No active leave protocols found.</td></tr>
             ) : (
               leaves.map(lv => (
                 <tr key={lv.id} className="align-middle">
-                  {user.role !== 'Staff' && <td>{lv.employee_name}</td>}
+                  {user.role !== 'employee' && <td>{lv.user_name}</td>}
                   <td>
                     <span className="fw-bold d-block">{lv.leave_type}</span>
                     <span className="small text-secondary">{lv.reason}</span>
                   </td>
-                  <td>{lv.start_date} <span className="mx-1">→</span> {lv.end_date}</td>
+                  <td>{lv.from_date} <span className="mx-1">→</span> {lv.to_date}</td>
                   <td>
                     <span className={`badge rounded-pill ${lv.status === 'Approved' ? 'bg-success' : lv.status === 'Rejected' ? 'bg-danger' : 'bg-warning text-dark'}`}>
-                       {lv.status}
+                       {lv.status.toUpperCase()}
                     </span>
                   </td>
-                  {user.role !== 'Staff' && (
+                  {user.role !== 'employee' && (
                     <td>
                       {lv.status === 'Pending' && (
                         <div className="d-flex gap-2">
@@ -117,7 +124,7 @@ const LeaveManagement = () => {
                 <div className="modal-body">
                   <div className="row g-3">
                     <div className="col-12">
-                      <label className="form-label small fw-bold">Leave Classification</label>
+                      <label className="form-label small fw-bold text-secondary">Leave Classification</label>
                       <select className="form-select" value={formData.leave_type} onChange={e => setFormData({...formData, leave_type: e.target.value})}>
                         <option>Sick</option>
                         <option>Casual</option>
@@ -126,22 +133,22 @@ const LeaveManagement = () => {
                       </select>
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label small fw-bold">Start Date</label>
+                      <label className="form-label small fw-bold text-secondary">Start Date</label>
                       <input type="date" className="form-control" value={formData.start_date} onChange={e => setFormData({...formData, start_date: e.target.value})} required />
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label small fw-bold">End Date</label>
+                      <label className="form-label small fw-bold text-secondary">End Date</label>
                       <input type="date" className="form-control" value={formData.end_date} onChange={e => setFormData({...formData, end_date: e.target.value})} required />
                     </div>
                     <div className="col-12">
-                      <label className="form-label small fw-bold">Reason / Justification</label>
-                      <textarea className="form-control" rows="3" value={formData.reason} onChange={e => setFormData({...formData, reason: e.target.value})}></textarea>
+                      <label className="form-label small fw-bold text-secondary">Reason / Justification</label>
+                      <textarea className="form-control" rows="3" value={formData.reason} onChange={e => setFormData({...formData, reason: e.target.value})} placeholder="Describe protocol requirement..."></textarea>
                     </div>
                   </div>
                 </div>
                 <div className="modal-footer border-0 pt-0">
-                  <button type="button" className="btn btn-light" onClick={() => setShowApply(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-primary px-4 fw-bold">Submit Protocol</button>
+                  <button type="button" className="btn btn-light" onClick={() => setShowApply(false)}>Abort</button>
+                  <button type="submit" className="btn btn-primary px-4 fw-bold shadow">Initialize Protocol</button>
                 </div>
               </form>
             </div>

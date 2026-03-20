@@ -1,29 +1,30 @@
-const db = require('../db');
+import { db } from '../db.js';
 
 const Meeting = {
-  getAll: () => db.allAsync(`
-    SELECT m.*, e.name as employee_name 
-    FROM meetings m 
-    JOIN employees e ON m.employee_id = e.id 
-    ORDER BY m.meeting_date DESC
-  `),
+  getAll: async () => {
+    const result = await db.execute(`
+      SELECT m.*, u.name as user_name 
+      FROM meetings m 
+      JOIN users u ON m.user_id = u.id 
+      ORDER BY m.meeting_date DESC
+    `);
+    return result.rows;
+  },
   
-  getByEmployee: (employee_id) => db.allAsync(`
-    SELECT * FROM meetings WHERE employee_id = ? ORDER BY meeting_date DESC
-  `, [employee_id]),
+  getByUser: async (user_id) => {
+    const result = await db.execute({
+      sql: 'SELECT * FROM meetings WHERE user_id = ? ORDER BY meeting_date DESC',
+      args: [user_id]
+    });
+    return result.rows;
+  },
 
-  getByManager: (managerId) => db.allAsync(`
-    SELECT m.*, e.name as employee_name 
-    FROM meetings m 
-    JOIN employees e ON m.employee_id = e.id 
-    WHERE e.manager_id = ?
-    ORDER BY m.meeting_date DESC
-  `, [managerId]),
-
-  create: (data) => db.runAsync(
-    'INSERT INTO meetings (employee_id, title, meeting_date, duration, notes) VALUES (?, ?, ?, ?, ?)',
-    [data.employee_id, data.title, data.meeting_date, data.duration, data.notes]
-  ),
+  create: async (data) => {
+    return await db.execute({
+      sql: 'INSERT INTO meetings (user_id, title, meeting_date, duration, notes) VALUES (?, ?, ?, ?, ?)',
+      args: [data.user_id, data.title, data.meeting_date, data.duration, data.notes]
+    });
+  },
 };
 
-module.exports = Meeting;
+export default Meeting;

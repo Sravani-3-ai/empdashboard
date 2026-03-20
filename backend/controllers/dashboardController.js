@@ -1,64 +1,73 @@
-const Attendance = require('../models/attendanceModel');
-const Leave = require('../models/leaveModel');
-const Bonus = require('../models/bonusModel');
-const Employee = require('../models/employeeModel');
-const db = require('../db');
-const { format } = require('date-fns');
+import { db } from '../db.js';
 
-exports.getStats = async (req, res) => {
-  const { role, id } = req.query;
-  const today = format(new Date(), 'yyyy-MM-dd');
-  
-  try {
-    if (role === 'Staff') {
-      // Individual productivity stats
-      const [attRes, leaveRes, bonusRes, trendRes] = await Promise.all([
-        db.getAsync('SELECT COUNT(*) as count FROM attendance WHERE employee_id = ? AND date = ?', [id, today]),
-        db.getAsync('SELECT COUNT(*) as count FROM leaves WHERE employee_id = ? AND status = "Approved"', [id]),
-        db.getAsync('SELECT SUM(bonus_amount) as total FROM bonuses WHERE employee_id = ?', [id]),
-        db.allAsync('SELECT date, work_hours as count FROM attendance WHERE employee_id = ? ORDER BY date DESC LIMIT 7', [id])
-      ]);
+export const getStats = async (req, res) => {
+    const { role, id } = req.query;
 
-      return res.json({
-        summary: {
-          totalEmployees: 1,
-          presentToday: attRes.count,
-          onLeaveToday: leaveRes.count,
-          totalBonuses: bonusRes.total || 0,
-          workingHoursToday: 0 // Fetch from current active session if needed
-        },
-        attendanceStats: trendRes.reverse(),
-        leaveStats: { "Personal": leaveRes.count }
-      });
+    try {
+        if (role === 'employee') {
+            const results = await Promise.all([
+                db.execute({
+                    sql: "SELECT COUNT(*) as count FROM attendance WHERE user_id = ? AND date(check_in) = date('now')",
+                    args: [id]
+                }),
+                db.execute({
+                    sql: "SELECT COUNT(*) as count FROM leaves WHERE user_id = ? AND status = 'Approved'",
+                    args: [id]
+                }),
+                db.execute({
+                    sql: 'SELECT SUM(amount) as total FROM bonuses WHERE user_id = ?',
+                    args: [id]
+                }),
+                db.execute({
+                    sql: 'SELECT check_in as date, 8 as count FROM attendance WHERE user_id = ? ORDER BY check_in DESC LIMIT 7',
+                    args: [id]
+                }),
+                db.execute('SELECT COUNT(*) as count FROM users'),
+                db.execute("SELECT COUNT(*) as count FROM users WHERE role = 'manager'"),
+                db.execute("SELECT COUNT(*) as count FROM users WHERE role = 'admin'")
+            ]);
+
+            const [attRes, leaveRes, bonusRes, trendRes, totalUserRes, mgrCountRes, admCountRes] = results;
+
+            return res.status(200).json({
+                summary: {
+                    totalEmployees: Number(totalUserRes.rows[0]?.count || 0),
+                    presentToday: Number(attRes.rows[0]?.count || 0),
+                    onLeaveToday: Number(leaveRes.rows[0]?.count || 0),
+                    totalBonuses: Number(bonusRes.rows[0]?.total || 0),
+                    managerCount: Number(mgrCountRes.rows[0]?.count || 0),
+                    adminCount: Number(admCountRes.rows[0]?.count || 0),
+                },
+                attendanceStats: trendRes.rows.reverse(),
+                leaveStats: { 'Approved': Number(leaveRes.rows[0]?.count || 0) }
+            });
+        }
+
+        // Admin or Manager
+        const [totalUserRes, presentRes, leaveRes, bonusRes, mgrCountRes, admCountRes, trendRes] = await Promise.all([
+            db.execute('SELECT COUNT(*) as count FROM users'),
+            db.execute("SELECT COUNT(*) as count FROM attendance WHERE date(check_in) = date('now')"),
+            db.execute("SELECT COUNT(*) as count FROM leaves WHERE date('now') BETWEEN date(from_date) AND date(to_date)"),
+            db.execute('SELECT SUM(amount) as total FROM bonuses'),
+            db.execute("SELECT COUNT(*) as count FROM users WHERE role = 'manager'"),
+            db.execute("SELECT COUNT(*) as count FROM users WHERE role = 'admin'"),
+            db.execute('SELECT date(check_in) as date, COUNT(*) as count FROM attendance GROUP BY date(check_in) ORDER BY date DESC LIMIT 7')
+        ]);
+
+        res.status(200).json({
+            summary: {
+                totalEmployees: Number(totalUserRes.rows[0]?.count || 0),
+                presentToday: Number(presentRes.rows[0]?.count || 0),
+                onLeaveToday: Number(leaveRes.rows[0]?.count || 0),
+                totalBonuses: Number(bonusRes.rows[0]?.total || 0),
+                managerCount: Number(mgrCountRes.rows[0]?.count || 0),
+                adminCount: Number(admCountRes.rows[0]?.count || 0),
+            },
+            attendanceStats: trendRes.rows.reverse(),
+            leaveStats: { 'On Leave': Number(leaveRes.rows[0]?.count || 0) }
+        });
+    } catch (error) {
+        console.error('Dashboard Stats Error:', error);
+        res.status(500).json({ message: 'Error fetching stats', error: error.message });
     }
-
-    // Manager / Admin stats
-    const [totalEmpRes, presentRes, leaveRes, bonusRes, workHoursRes, attendanceTrend, leaveTypeStats, mgrCountRes, admCountRes] = await Promise.all([
-      db.getAsync('SELECT COUNT(*) as count FROM employees'),
-      Attendance.getStatsByDate(today),
-      Leave.getOnLeaveToday(today),
-      Bonus.getTotal(),
-      Attendance.getTotalWorkingHoursToday(today),
-      Attendance.getRecentTrends(7),
-      Leave.getTypeStats(),
-      db.getAsync('SELECT COUNT(*) as count FROM employees WHERE employee_level = "Manager"'),
-      db.getAsync('SELECT COUNT(*) as count FROM employees WHERE employee_level = "Admin"')
-    ]);
-
-    res.json({
-      summary: {
-        totalEmployees: totalEmpRes.count,
-        presentToday: presentRes.count,
-        onLeaveToday: leaveRes.count,
-        totalBonuses: bonusRes.total || 0,
-        workingHoursToday: workHoursRes.total || 0,
-        managerCount: mgrCountRes.count,
-        adminCount: admCountRes.count,
-      },
-      attendanceStats: attendanceTrend,
-      leaveStats: leaveTypeStats.reduce((acc, curr) => ({ ...acc, [curr.leave_type]: curr.count }), {}),
-    });
-  } catch (err) {
-    res.status(500).json({ message: 'Database Error!', error: err.message });
-  }
 };
